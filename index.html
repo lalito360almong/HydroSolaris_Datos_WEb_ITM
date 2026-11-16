@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HydroSolaris: AeroDome — Panel de Telemetría</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-cream: #f4f0ec;
+      --bg-card: #ffffff;
+      --bg-subtle: #ede7e0;
+      --border-sand: #d8d0c5;
+      --olive-primary: #3d5a45;
+      --olive-light: #e6ede8;
+      --text-dark: #242925;
+      --text-muted: #616963;
+      --amber-bg: #fdf3e1;
+      --amber-text: #a66314;
+      --amber-border: #edd3a3;
+      --red-bg: #fbe9e7;
+      --red-text: #b83a2d;
+      --red-border: #eabcb7;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-cream);
+      color: var(--text-dark);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.5;
+      padding: 28px 20px 60px;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    /* Encabezado Institucional (Sin Logos) */
+    header.institutional-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-sand);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 16px rgba(36, 41, 37, 0.04);
+    }
+
+    .inst-titles {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .inst-school {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--olive-primary);
+    }
+
+    .inst-group {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .inst-project {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-top: 4px;
+    }
+
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 11px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border-sand);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background-color: var(--olive-primary);
+      color: #ffffff;
+      border-color: var(--olive-primary);
+    }
+
+    .btn-primary:hover {
+      background-color: #2f4736;
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-subtle);
+      color: var(--text-dark);
+    }
+
+    .btn-secondary:hover {
+      background-color: #e2dad0;
+    }
+
+    .btn-secondary.active {
+      background-color: var(--olive-light);
+      color: var(--olive-primary);
+      border-color: var(--olive-primary);
+    }
+
+    .status-pill {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-sand);
+      color: var(--text-muted);
+    }
+
+    .status-pill.connected {
+      background: var(--olive-light);
+      color: var(--olive-primary);
+      border-color: var(--olive-primary);
+      font-weight: 600;
+    }
+
+    /* Barra de Escenarios de Simulación */
+    .sim-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-sand);
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sim-bar.visible { display: flex; }
+
+    .sim-bar span {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .sim-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn-preset {
+      font-size: 0.82rem;
+      padding: 7px 13px;
+      border-radius: 8px;
+      background: var(--bg-cream);
+      border: 1px solid var(--border-sand);
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .btn-preset:hover {
+      background: var(--olive-light);
+      border-color: var(--olive-primary);
+      color: var(--olive-primary);
+    }
+
+    /* Secciones */
+    .section-block {
+      margin-bottom: 28px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-sand);
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem;
+      color: var(--olive-primary);
+    }
+
+    .section-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 16px;
+    }
+
+    /* Tarjeta de Sensor */
+    .sensor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-sand);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+    }
+
+    .sim-active .sensor-card.clickable {
+      cursor: pointer;
+    }
+
+    .sim-active .sensor-card.clickable:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(36, 41, 37, 0.06);
+    }
+
+    .sensor-card.state-warn {
+      border-color: var(--amber-border);
+      background: linear-gradient(to bottom right, #ffffff, #fffcf6);
+    }
+
+    .sensor-card.state-alert {
+      border-color: var(--red-border);
+      background: linear-gradient(to bottom right, #ffffff, #fff7f6);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .pin-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .badge {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    .badge-ok {
+      background: var(--olive-light);
+      color: var(--olive-primary);
+    }
+
+    .badge-warn {
+      background: var(--amber-bg);
+      color: var(--amber-text);
+    }
+
+    .badge-alert {
+      background: var(--red-bg);
+      color: var(--red-text);
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 1.02rem;
+      color: var(--text-dark);
+    }
+
+    .card-desc {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+    }
+
+    /* Caja de los dos estados posibles */
+    .dual-states {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 4px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-sand);
+      font-size: 0.78rem;
+    }
+
+    .state-option {
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: var(--bg-cream);
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .state-option strong {
+      display: block;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.74rem;
+    }
+
+    .state-option.active-low {
+      background: var(--olive-light);
+      color: var(--olive-primary);
+      border-color: var(--olive-primary);
+      font-weight: 600;
+    }
+
+    .state-option.active-warn {
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      border-color: var(--amber-border);
+      font-weight: 600;
+    }
+
+    .state-option.active-alert {
+      background: var(--red-bg);
+      color: var(--red-text);
+      border-color: var(--red-border);
+      font-weight: 600;
+    }
+
+    /* Consola Serial */
+    .console-box {
+      background: #222623;
+      color: #d9e2dc;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      padding: 16px;
+      border-radius: 12px;
+      height: 150px;
+      overflow-y: auto;
+      border: 1px solid var(--border-sand);
+    }
+
+    .console-line { margin-bottom: 4px; }
+    .console-time { color: #8fa395; margin-right: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Encabezado Institucional sin logos -->
+  <header class="institutional-header">
+    <div class="inst-titles">
+      <div class="inst-school">Instituto Tecnológico México</div>
+      <div class="inst-group">5to A Mecatrónica</div>
+      <h1 class="inst-project">HydroSolaris: AeroDome</h1>
+    </div>
+
+    <div class="controls-bar">
+      <span id="connStatus" class="status-pill">Desconectado (9600 bps)</span>
+      <button id="btnConnect" class="btn btn-primary" onclick="connectSerial()">
+        Conectar Arduino USB
+      </button>
+      <button id="btnSim" class="btn btn-secondary" onclick="toggleSimulation()">
+        Modo Simulación: OFF
+      </button>
+    </div>
+  </header>
+
+  <!-- Barra de Pruebas en Modo Simulación -->
+  <div id="simBar" class="sim-bar">
+    <span>Modo Simulación activo: haz clic en cualquier tarjeta para alternar su estado o elige un escenario:</span>
+    <div class="sim-presets">
+      <button class="btn-preset" onclick="applyPreset('normal')">Día Óptimo</button>
+      <button class="btn-preset" onclick="applyPreset('lluvia')">Tormenta y Recolección</button>
+      <button class="btn-preset" onclick="applyPreset('intrusion')">Noche + Intrusión (Sirena io-io)</button>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: SEGURIDAD NOCTURNA -->
+  <section class="section-block">
+    <div class="section-header">
+      <h2 class="section-title">Seguridad Nocturna y Alarma Perimetral</h2>
+      <span class="section-subtitle">Pines Cerebro: D12, D13, A0 (Activa de Noche)</span>
+    </div>
+    <div class="cards-grid" id="gridSecurity"></div>
+  </section>
+
+  <!-- SECCIÓN 2: NODO 1 -->
+  <section class="section-block">
+    <div class="section-header">
+      <h2 class="section-title">Nodo 1 — Iluminación, Radiación y Clima</h2>
+      <span class="section-subtitle">Pines Cerebro: D2 – D6</span>
+    </div>
+    <div class="cards-grid" id="gridNodo1"></div>
+  </section>
+
+  <!-- SECCIÓN 3: NODO 3 -->
+  <section class="section-block">
+    <div class="section-header">
+      <h2 class="section-title">Nodo 3 — Ciclo Hídrico y Riego Automatizado</h2>
+      <span class="section-subtitle">Pines Cerebro: D7 – D11</span>
+    </div>
+    <div class="cards-grid" id="gridNodo3"></div>
+  </section>
+
+  <!-- CONSOLA SERIAL -->
+  <section class="section-block">
+    <div class="section-header">
+      <h2 class="section-title">Monitor Serial en Tiempo Real</h2>
+      <span class="section-subtitle">Trama JSON @ 9600 baudios</span>
+    </div>
+    <div id="serialConsole" class="console-box">
+      <div class="console-line"><span class="console-time">[SISTEMA]</span>Esperando conexión USB con Arduino Cerebro o activación de Modo Simulación...</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Definición completa de las 13 señales mostrando SIEMPRE sus dos estados
+  const SIGNALS = [
+    // Seguridad Nocturna
+    {
+      key: 'sec_pir',
+      group: 'gridSecurity',
+      pin: 'Cerebro D13',
+      title: 'Sensor PIR (Movimiento)',
+      desc: 'Detecta presencia térmica en el perímetro durante el ciclo nocturno.',
+      lowText: 'Sin Movimiento',
+      highText: 'Movimiento Detectado',
+      severity: 'alert',
+      clickable: true
+    },
+    {
+      key: 'sec_ir',
+      group: 'gridSecurity',
+      pin: 'Cerebro A0',
+      title: 'Sensor Barrera IR',
+      desc: 'Detecta el corte del haz infrarrojo en los accesos del domo.',
+      lowText: 'Haz Intacto',
+      highText: 'Haz Interrumpido',
+      severity: 'alert',
+      clickable: true
+    },
+    {
+      key: 'sec_buzzer',
+      group: 'gridSecurity',
+      pin: 'Cerebro D12 (Salida)',
+      title: 'Buzzer Sirena ("io io io io")',
+      desc: 'Se dispara automáticamente si es de NOCHE y el PIR o Barrera IR detectan algo.',
+      lowText: 'SILENCIO',
+      highText: 'SONANDO (io io io io)',
+      severity: 'alert',
+      clickable: false
+    },
+
+    // Nodo 1
+    {
+      key: 'n1_noche',
+      group: 'gridNodo1',
+      pin: 'N1 D3 → Cerebro D2',
+      title: 'Ciclo Día / Noche (LDR)',
+      desc: 'Determina el periodo lumínico y habilita la seguridad perimetral nocturna.',
+      lowText: 'DÍA (Luz Suficiente)',
+      highText: 'NOCHE (Oscuridad)',
+      severity: 'warn',
+      clickable: true
+    },
+    {
+      key: 'n1_rad',
+      group: 'gridNodo1',
+      pin: 'N1 D4 → Cerebro D3',
+      title: 'Radiación Solar IR',
+      desc: 'Evalúa si la radiación solar recibida por los cultivos es adecuada.',
+      lowText: 'Radiación Normal',
+      highText: 'Radiación Baja',
+      severity: 'warn',
+      clickable: true
+    },
+    {
+      key: 'n1_hum',
+      group: 'gridNodo1',
+      pin: 'N1 D5 → Cerebro D4',
+      title: 'Humedad Ambiental Interna',
+      desc: 'Verifica que la humedad del microclima esté entre 40% y 85%.',
+      lowText: 'Humedad Estable',
+      highText: 'Fuera de Rango',
+      severity: 'alert',
+      clickable: true
+    },
+    {
+      key: 'n1_temp',
+      group: 'gridNodo1',
+      pin: 'N1 D6 → Cerebro D5',
+      title: 'Temperatura Analógica Local',
+      desc: 'Supervisa sobrecalentamiento puntual mayor a 35 °C.',
+      lowText: 'Temp. Segura (≤35°C)',
+      highText: 'Alerta Calor (>35°C)',
+      severity: 'alert',
+      clickable: true
+    },
+    {
+      key: 'n1_luz',
+      group: 'gridNodo1',
+      pin: 'N1 D7 → Cerebro D6',
+      title: 'Iluminación Artificial Forzada',
+      desc: 'Orden de encendido por escasez prolongada de radiación solar.',
+      lowText: 'Luces Apagadas',
+      highText: 'Luces Activadas',
+      severity: 'warn',
+      clickable: true
+    },
+
+    // Nodo 3
+    {
+      key: 'n3_lluvia',
+      group: 'gridNodo3',
+      pin: 'N3 D4 → Cerebro D7',
+      title: 'Detección de Lluvia (FC-37)',
+      desc: 'Indica precipitación activa sobre el sistema de captación pluvial.',
+      lowText: 'Sensor Seco',
+      highText: 'Lluvia Activa',
+      severity: 'warn',
+      clickable: true
+    },
+    {
+      key: 'n3_suelo',
+      group: 'gridNodo3',
+      pin: 'N3 D5 → Cerebro D8',
+      title: 'Humedad del Suelo / Bomba C',
+      desc: 'Activa el riego automático cuando el suelo supera el umbral seco (>600).',
+      lowText: 'Humedad Óptima',
+      highText: 'Suelo Seco (Regando)',
+      severity: 'warn',
+      clickable: true
+    },
+    {
+      key: 'n3_lleno',
+      group: 'gridNodo3',
+      pin: 'N3 D6 → Cerebro D9',
+      title: 'Alerta Tanque Lleno (100%)',
+      desc: 'Bloquea la captación pluvial al llegar al límite máximo.',
+      lowText: 'Nivel < 100%',
+      highText: 'Tanque Lleno (100%)',
+      severity: 'alert',
+      clickable: true
+    },
+    {
+      key: 'n3_h60',
+      group: 'gridNodo3',
+      pin: 'N3 D10 → Cerebro D10',
+      title: 'Histéresis Nivel Tanque (≤60%)',
+      desc: 'Habilita nuevamente la recolección cuando el tanque baja al 60% o menos.',
+      lowText: 'Reserva > 60%',
+      highText: 'Nivel ≤ 60% (Habilitado)',
+      severity: 'warn',
+      clickable: true
+    },
+    {
+      key: 'n3_motAB',
+      group: 'gridNodo3',
+      pin: 'N3 D11 → Cerebro D11',
+      title: 'Motores A y B (Succión Pluvial)',
+      desc: 'Indica operación simultánea de bombeo de agua de lluvia al tanque.',
+      lowText: 'Motores Apagados',
+      highText: 'Motores Succionando',
+      severity: 'warn',
+      clickable: true
+    }
+  ];
+
+  // Estado actual (Todo inicia en 0 / Desactivado)
+  let state = {
+    n1_noche: 0, n1_rad: 0, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+    n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+    sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+  };
+
+  let simMode = false;
+  let port = null;
+  let reader = null;
+
+  // Audio Web para simular el sonido "io io io io" en la computadora
+  let audioCtx = null;
+  let sirenInterval = null;
+  let sirenHighTone = true;
+
+  function updateWebSiren(isActive) {
+    if (isActive && !sirenInterval) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      sirenInterval = setInterval(() => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = sirenHighTone ? 980 : 620; // "i" (980Hz) - "o" (620Hz)
+        gain.gain.value = 0.08;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.19);
+        sirenHighTone = !sirenHighTone;
+      }, 220);
+    } else if (!isActive && sirenInterval) {
+      clearInterval(sirenInterval);
+      sirenInterval = null;
+      sirenHighTone = true;
+    }
+  }
+
+  // Renderizado inicial de tarjetas
+  function renderCards() {
+    ['gridSecurity', 'gridNodo1', 'gridNodo3'].forEach(id => {
+      document.getElementById(id).innerHTML = '';
+    });
+
+    SIGNALS.forEach(sig => {
+      const val = state[sig.key] === 1 ? 1 : 0;
+      const isHigh = val === 1;
+      const badgeClass = !isHigh ? 'badge-ok' : (sig.severity === 'alert' ? 'badge-alert' : 'badge-warn');
+      const cardClass = !isHigh ? '' : (sig.severity === 'alert' ? 'state-alert' : 'state-warn');
+      const activeHighClass = sig.severity === 'alert' ? 'active-alert' : 'active-warn';
+
+      const card = document.createElement('div');
+      card.className = `sensor-card ${cardClass} ${sig.clickable ? 'clickable' : ''}`;
+      if (sig.clickable) {
+        card.onclick = () => {
+          if (!simMode) return;
+          state[sig.key] = state[sig.key] === 1 ? 0 : 1;
+          recalculateSimLogic();
+          renderCards();
+          logSerial(`[SIM] ${JSON.stringify(state)}`);
+        };
+      }
+
+      card.innerHTML = `
+        <div>
+          <div class="card-top">
+            <span class="pin-tag">${sig.pin}</span>
+            <span class="badge ${badgeClass}">${isHigh ? 'HIGH (1)' : 'LOW (0)'}</span>
+          </div>
+          <h3 class="card-title" style="margin-top:10px;">${sig.title}</h3>
+          <p class="card-desc" style="margin-top:4px;">${sig.desc}</p>
+        </div>
+        <div class="dual-states">
+          <div class="state-option ${!isHigh ? 'active-low' : ''}">
+            <strong>LOW (0)</strong>
+            ${sig.lowText}
+          </div>
+          <div class="state-option ${isHigh ? activeHighClass : ''}">
+            <strong>HIGH (1)</strong>
+            ${sig.highText}
+          </div>
+        </div>
+      `;
+
+      document.getElementById(sig.group).appendChild(card);
+    });
+
+    updateWebSiren(state.sec_buzzer === 1);
+  }
+
+  function recalculateSimLogic() {
+    // Replica exactamente la lógica del Arduino Cerebro en modo simulación
+    if (state.n1_noche === 1 && (state.sec_pir === 1 || state.sec_ir === 1)) {
+      state.sec_buzzer = 1;
+    } else {
+      state.sec_buzzer = 0;
+    }
+  }
+
+  function toggleSimulation() {
+    simMode = !simMode;
+    const btn = document.getElementById('btnSim');
+    const bar = document.getElementById('simBar');
+    document.body.classList.toggle('sim-active', simMode);
+
+    if (simMode) {
+      btn.textContent = 'Modo Simulación: ON';
+      btn.classList.add('active');
+      bar.classList.add('visible');
+      logSerial('[SIMULACIÓN] Modo de pruebas activado.');
+    } else {
+      btn.textContent = 'Modo Simulación: OFF';
+      btn.classList.remove('active');
+      bar.classList.remove('visible');
+      applyPreset('normal');
+      logSerial('[SIMULACIÓN] Modo de pruebas desactivado.');
+    }
+  }
+
+  function applyPreset(type) {
+    if (type === 'normal') {
+      state = {
+        n1_noche: 0, n1_rad: 0, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+        n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+        sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+      };
+    } else if (type === 'lluvia') {
+      state = {
+        n1_noche: 0, n1_rad: 1, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+        n3_lluvia: 1, n3_suelo: 0, n3_lleno: 0, n3_h60: 1, n3_motAB: 1,
+        sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+      };
+    } else if (type === 'intrusion') {
+      state = {
+        n1_noche: 1, n1_rad: 1, n1_hum: 0, n1_temp: 0, n1_luz: 1,
+        n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+        sec_pir: 1, sec_ir: 1, sec_buzzer: 1
+      };
+    }
+    recalculateSimLogic();
+    renderCards();
+    logSerial(`[ESCENARIO: ${type.toUpperCase()}] ${JSON.stringify(state)}`);
+  }
+
+  // Conexión Web Serial API con Arduino Cerebro
+  async function connectSerial() {
+    if (!('serial' in navigator)) {
+      alert('Tu navegador no soporta Web Serial API. Usa Google Chrome o Microsoft Edge.');
+      return;
+    }
+
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+
+      if (simMode) toggleSimulation();
+
+      const statusEl = document.getElementById('connStatus');
+      statusEl.textContent = 'Conectado USB (9600 bps)';
+      statusEl.classList.add('connected');
+      document.getElementById('btnConnect').textContent = 'Arduino Conectado';
+      logSerial('[USB] Puerto Serial abierto correctamente a 9600 baudios.');
+
+      const decoder = new TextDecoderStream();
+      port.readable.pipeTo(decoder.writable);
+      reader = decoder.readable.getReader();
+
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              state = { ...state, ...parsed };
+              renderCards();
+              logSerial(trimmed);
+            } catch (e) {
+              // Ignorar tramas incompletas al inicio
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logSerial(`[ERROR USB] ${err.message}`);
+    }
+  }
+
+  function logSerial(msg) {
+    const box = document.getElementById('serialConsole');
+    const now = new Date().toLocaleTimeString();
+    const div = document.createElement('div');
+    div.className = 'console-line';
+    div.innerHTML = `<span class="console-time">[${now}]</span>${msg}`;
+    box.appendChild(div);
+    if (box.children.length > 40) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // Inicializar vista
+  renderCards();
+</script>
+</body>
+</html>
