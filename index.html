@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Telemetría - Instituto Tecnológico México</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-slide: #f4f0ec;
+      --card-slide: #ffffff;
+      --accent-green: #3d5a45;
+      --text-dark: #2c332e;
+      --text-muted: #626d65;
+      --border-slide: #d8d0c5;
+      --lcd-bg: #111a13;
+      --lcd-text: #4ade80;
+      --alert-red: #dc2626;
+      --warn-amber: #d97706;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-slide);
+      color: var(--text-dark);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.6;
+      padding-bottom: 50px;
+    }
+
+    /* HEADER INSTITUCIONAL (SIN LOGOS Y SIN TÍTULO HYDROSOLARIS) */
+    .header-pdf {
+      background: var(--card-slide);
+      border-bottom: 3px solid var(--accent-green);
+      padding: 20px 35px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .header-content {
+      max-width: 1560px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .header-titles h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: var(--text-dark);
+      font-weight: 700;
+    }
+
+    .header-titles .subtitle {
+      color: var(--accent-green);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* DISTRIBUCIÓN PRINCIPAL: IZQUIERDA CONTENIDO / DERECHA MONITOR SERIAL FIJO */
+    .main-layout {
+      max-width: 1560px;
+      margin: 28px auto;
+      padding: 0 25px;
+      display: grid;
+      grid-template-columns: 1fr 500px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 1120px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .left-column {
+      min-width: 0;
+    }
+
+    /* MONITOR SERIAL FIJO Y TRADUCIDO (SIEMPRE VISIBLE AL HACER SCROLL) */
+    .serial-sidebar {
+      position: sticky;
+      top: 20px;
+      background: var(--card-slide);
+      border: 2px solid var(--accent-green);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 12px 32px rgba(61, 90, 69, 0.12);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 40px);
+      min-height: 580px;
+    }
+
+    @media (max-width: 1120px) {
+      .serial-sidebar {
+        position: static;
+        height: 520px;
+      }
+    }
+
+    .serial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border-slide);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+
+    .serial-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem;
+      color: var(--accent-green);
+    }
+
+    .btn-clear-serial {
+      background: #efeae2;
+      border: 1px solid var(--border-slide);
+      color: var(--text-dark);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-clear-serial:hover { background: #e2dad0; }
+
+    .serial-monitor {
+      background: var(--lcd-bg);
+      color: var(--lcd-text);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.55;
+      padding: 16px;
+      border-radius: 10px;
+      flex: 1;
+      overflow-y: auto;
+      border: 3px solid #28382c;
+      box-shadow: inset 0 0 16px rgba(0,0,0,0.85);
+      word-break: break-word;
+    }
+
+    .log-item {
+      margin-bottom: 9px;
+      padding-bottom: 7px;
+      border-bottom: 1px dashed rgba(74, 222, 128, 0.18);
+    }
+    .log-time { color: #8fa395; font-size: 0.78rem; margin-right: 6px; }
+    .log-alert { color: #f87171; font-weight: bold; }
+    .log-warn { color: #fbbf24; }
+    .log-ok { color: #4ade80; }
+
+    /* TARJETAS PRINCIPALES */
+    .slide-card {
+      background: var(--card-slide);
+      border: 1px solid var(--border-slide);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 30px rgba(61, 90, 69, 0.04);
+    }
+
+    .slide-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: var(--accent-green);
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border-slide);
+      padding-bottom: 12px;
+    }
+
+    .slide-subtitle {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: var(--text-dark);
+      margin: 22px 0 10px 0;
+    }
+
+    p {
+      font-size: 0.98rem;
+      color: var(--text-muted);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 26px;
+    }
+
+    @media (max-width: 850px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    .control-group label {
+      display: block;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 6px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-arduino {
+      background: var(--accent-green);
+      color: white;
+      border: none;
+      padding: 11px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .btn-arduino:hover { background: #2c4233; }
+
+    .btn-sim {
+      background: #efeae2;
+      color: var(--text-dark);
+      border: 1px solid var(--border-slide);
+      padding: 11px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .btn-sim:hover { background: #e4ddd2; }
+    .btn-sim.sim-on {
+      background: #fef3c7;
+      border-color: var(--warn-amber);
+      color: #92400e;
+    }
+
+    /* Barra de escenarios de simulación */
+    .sim-presets-box {
+      display: none;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 15px;
+    }
+    .sim-presets-box.visible { display: block; }
+    .sim-presets-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+    .preset-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .btn-mini {
+      background: #ffffff;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-mini:hover { background: #fef3c7; }
+
+    .info-box-fixed {
+      background: #f9f8f6;
+      border: 1px solid var(--border-slide);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      color: var(--text-dark);
+      font-size: 0.88rem;
+    }
+
+    .password-panel {
+      background: #fff5f5;
+      border: 1px solid #feb2b2;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .password-panel input {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e0;
+      border-radius: 6px;
+      font-size: 1rem;
+      width: 130px;
+      margin-right: 10px;
+      letter-spacing: 3px;
+    }
+
+    .btn-password {
+      background: var(--alert-red);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .lcd-box {
+      background-color: var(--lcd-bg);
+      border: 4px solid #28382c;
+      border-radius: 10px;
+      padding: 20px;
+      font-family: 'Fira Code', monospace;
+      color: var(--lcd-text);
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
+      margin-bottom: 20px;
+    }
+
+    .lcd-row {
+      font-size: 1.1rem;
+      letter-spacing: 1.2px;
+      min-height: 28px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .actuators-status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .actuator-card {
+      background: #faf8f5;
+      border: 1px solid var(--border-slide);
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+
+    .actuator-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .actuator-val {
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--text-dark);
+    }
+
+    .val-alert { color: var(--alert-red); }
+    .val-warn { color: var(--warn-amber); }
+    .val-ok { color: var(--accent-green); }
+
+    /* CUADRÍCULA DE SENSORES DE LOS NODOS */
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 15px;
+      margin-top: 12px;
+    }
+
+    .sensor-item {
+      background: #faf8f5;
+      border: 1px solid var(--border-slide);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    body.sim-active .sensor-item.can-toggle {
+      cursor: pointer;
+    }
+    body.sim-active .sensor-item.can-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 14px rgba(0,0,0,0.06);
+    }
+
+    .sensor-item.active-alert {
+      border-color: #feb2b2;
+      background: #fff8f8;
+    }
+
+    .sensor-item.active-warn {
+      border-color: #fbd38d;
+      background: #fffcf5;
+    }
+
+    .sensor-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pin-label {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      background: #ede8e0;
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    .status-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #e6ede8;
+      color: var(--accent-green);
+    }
+
+    .status-tag.tag-alert {
+      background: #fee2e2;
+      color: var(--alert-red);
+    }
+
+    .status-tag.tag-warn {
+      background: #fef3c7;
+      color: var(--warn-amber);
+    }
+
+    .sensor-name {
+      font-weight: 700;
+      font-size: 0.96rem;
+      color: var(--text-dark);
+    }
+
+    .two-states {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      border-top: 1px dashed var(--border-slide);
+      padding-top: 9px;
+      font-size: 0.77rem;
+    }
+
+    .state-box {
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #ffffff;
+      border: 1px solid var(--border-slide);
+      color: var(--text-muted);
+    }
+
+    .state-box strong {
+      display: block;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.72rem;
+    }
+
+    .state-box.selected-low {
+      background: #e6ede8;
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+      font-weight: 700;
+    }
+
+    .state-box.selected-warn {
+      background: #fef3c7;
+      border-color: var(--warn-amber);
+      color: #92400e;
+      font-weight: 700;
+    }
+
+    .state-box.selected-alert {
+      background: #fee2e2;
+      border-color: var(--alert-red);
+      color: var(--alert-red);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER INSTITUCIONAL (SIN LOGOS) -->
+  <header class="header-pdf">
+    <div class="header-content">
+      <div class="header-titles">
+        <h1>Instituto Tecnológico México</h1>
+        <div class="subtitle">5to A Mecatrónica</div>
+      </div>
+      <div style="text-align: right;">
+        <span id="connStatus" style="font-family: 'Fira Code', monospace; font-size: 0.88rem; font-weight: 600; color: var(--accent-green);">
+          ● En espera de Arduino Cerebro (9600 bps)
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL DE 2 COLUMNAS -->
+  <div class="main-layout">
+
+    <!-- COLUMNA IZQUIERDA: PANEL Y TARJETAS DE SENSORES -->
+    <div class="left-column">
+
+      <!-- PANEL DE MONITOREO Y ESTADO -->
+      <div class="slide-card">
+        <h2 class="slide-title">Panel de Monitoreo, Estado y Alertas en Tiempo Real</h2>
+        
+        <div class="dashboard-grid">
+          <div>
+            <h3 class="slide-subtitle" style="margin-top:0;">Conexión y Modo de Prueba</h3>
+            
+            <div class="control-group">
+              <label>Fuente de Datos:</label>
+              <div class="btn-row">
+                <button id="btnArduino" class="btn-arduino" onclick="conectarArduino()">Conectar Arduino USB</button>
+                <button id="btnSim" class="btn-sim" onclick="toggleSimulacion()">Modo Simulación: OFF</button>
+              </div>
+            </div>
+
+            <!-- Escenarios rápidos cuando Modo Simulación está activo -->
+            <div id="simPresetsBox" class="sim-presets-box">
+              <div class="sim-presets-title">Simulación Activa (Haz clic en cualquier tarjeta de sensor o elige un escenario):</div>
+              <div class="preset-btns">
+                <button class="btn-mini" onclick="aplicarEscenario('normal')">Día Óptimo</button>
+                <button class="btn-mini" onclick="aplicarEscenario('lluvia')">Lluvia y Recolección</button>
+                <button class="btn-mini" onclick="aplicarEscenario('pir_noche')">Noche + PIR (Alarma)</button>
+                <button class="btn-mini" onclick="aplicarEscenario('ir_noche')">Noche + Barrera IR (Alarma)</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Estado Operativo:</label>
+              <div id="modeBanner" class="info-box-fixed">Modo Hardware: Sensores autónomos desde Arduino Cerebro</div>
+            </div>
+
+            <!-- PANEL DE CONTRASEÑA OCULTA -->
+            <div class="password-panel">
+              <label style="font-weight: 700; color: #c53030; margin-bottom: 8px; display: block;">Desactivar Alarma Nocturna (Sirena io-io):</label>
+              <div style="display: flex; align-items: center;">
+                <input type="password" id="txtPassword" placeholder="••••" maxlength="4">
+                <button class="btn-password" onclick="desactivarAlarma()">Desactivar</button>
+              </div>
+              <p id="msgPass" style="font-size: 0.84rem; margin-top: 6px; color: #626d65;">Ingrese contraseña para silenciar buzzer si hay detección nocturna.</p>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="slide-subtitle" style="margin-top:0;">Salida LCD & Seguridad Nocturna</h3>
+            
+            <div class="lcd-box">
+              <div class="lcd-row">
+                <span id="lcdLine1">CICLO: DIA | CLIMA: SECO</span>
+              </div>
+              <div class="lcd-row" style="margin-top: 10px;">
+                <span id="lcdLine2">SISTEMA ESTABLE - SILENCIO</span>
+              </div>
+            </div>
+
+            <div class="actuators-status-grid">
+              <div class="actuator-card">
+                <div class="actuator-label">Sensor PIR (Noche)</div>
+                <div id="stPir" class="actuator-val val-ok">SIN MOVIMIENTO</div>
+              </div>
+              <div class="actuator-card">
+                <div class="actuator-label">Barrera IR (Noche)</div>
+                <div id="stIr" class="actuator-val val-ok">HAZ INTACTO</div>
+              </div>
+              <div class="actuator-card">
+                <div class="actuator-label">Buzzer / Alarma</div>
+                <div id="stBuzzer" class="actuator-val val-ok">SILENCIO</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELEMETRÍA DETALLADA DE LOS NODOS -->
+      <div class="slide-card">
+        <h2 class="slide-title">Lectura de Pines Digitales (Nodo 1, Nodo 3 y Seguridad)</h2>
+        <p style="margin-bottom: 10px;">Cada tarjeta muestra en tiempo real los <strong>dos estados posibles (LOW / HIGH)</strong> recibidos por el Arduino Cerebro:</p>
+
+        <h3 class="slide-subtitle">Módulo de Seguridad Nocturna (Pines Cerebro D12, D13, A0)</h3>
+        <div class="nodes-grid" id="gridSeguridad"></div>
+
+        <h3 class="slide-subtitle">Nodo 1 — Iluminación, Radiación y Clima (Pines Cerebro D2 – D6)</h3>
+        <div class="nodes-grid" id="gridNodo1"></div>
+
+        <h3 class="slide-subtitle">Nodo 3 — Ciclo Hídrico y Riego (Pines Cerebro D7 – D11)</h3>
+        <div class="nodes-grid" id="gridNodo3"></div>
+      </div>
+
+    </div>
+
+    <!-- COLUMNA DERECHA: MONITOR SERIAL FIJO Y TRADUCIDO -->
+    <aside class="serial-sidebar">
+      <div class="serial-header">
+        <div>
+          <h2>Monitor Serial en Vivo</h2>
+          <span style="font-family: 'Fira Code', monospace; font-size: 0.78rem; color: var(--text-muted);">Traducción automática de eventos</span>
+        </div>
+        <button class="btn-clear-serial" onclick="limpiarSerial()">Limpiar</button>
+      </div>
+      <div id="serialLog" class="serial-monitor">
+        <div class="log-item"><span class="log-time">[SISTEMA]</span>Sistema iniciado. Esperando conexión USB o activación del Modo Simulación...</div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script>
+    const SENSORS = [
+      // Seguridad Nocturna
+      {
+        key: 'sec_pir', grid: 'gridSeguridad', pin: 'Cerebro D13',
+        name: 'Sensor PIR (Movimiento Nocturno)',
+        low: 'Sin Movimiento', high: 'Movimiento Detectado', type: 'alert', clickable: true
+      },
+      {
+        key: 'sec_ir', grid: 'gridSeguridad', pin: 'Cerebro A0',
+        name: 'Sensor de Barrera IR',
+        low: 'Haz Intacto', high: 'Haz Interrumpido', type: 'alert', clickable: true
+      },
+      {
+        key: 'sec_buzzer', grid: 'gridSeguridad', pin: 'Cerebro D12 (Salida)',
+        name: 'Buzzer Alarma ("io io io io")',
+        low: 'SILENCIO', high: 'SONANDO (io io io io)', type: 'alert', clickable: false
+      },
+
+      // Nodo 1
+      {
+        key: 'n1_noche', grid: 'gridNodo1', pin: 'N1 D3 -> Cerebro D2',
+        name: 'Pin 1: Estado Día / Noche (LDR)',
+        low: 'DÍA (Luz Natural)', high: 'NOCHE (Oscuridad)', type: 'warn', clickable: true
+      },
+      {
+        key: 'n1_rad', grid: 'gridNodo1', pin: 'N1 D4 -> Cerebro D3',
+        name: 'Pin 2: Radiación Solar IR',
+        low: 'Radiación Normal', high: 'Radiación Baja', type: 'warn', clickable: true
+      },
+      {
+        key: 'n1_hum', grid: 'gridNodo1', pin: 'N1 D5 -> Cerebro D4',
+        name: 'Pin 3: Humedad Interna DHT',
+        low: 'Humedad Segura (40-85%)', high: 'Humedad Fuera de Rango', type: 'alert', clickable: true
+      },
+      {
+        key: 'n1_temp', grid: 'gridNodo1', pin: 'N1 D6 -> Cerebro D5',
+        name: 'Pin 4: Temperatura Analógica',
+        low: 'Temp. Segura (≤ 35°C)', high: 'Sobrecalentamiento (> 35°C)', type: 'alert', clickable: true
+      },
+      {
+        key: 'n1_luz', grid: 'gridNodo1', pin: 'N1 D7 -> Cerebro D6',
+        name: 'Pin 5: Luces Artificiales Forzadas',
+        low: 'Luces Apagadas', high: 'Luces Encendidas', type: 'warn', clickable: true
+      },
+
+      // Nodo 3
+      {
+        key: 'n3_lluvia', grid: 'gridNodo3', pin: 'N3 D4 -> Cerebro D7',
+        name: 'Pin 1: Detección de Lluvia (FC-37)',
+        low: 'Sensor Seco', high: 'Lluvia Detectada', type: 'warn', clickable: true
+      },
+      {
+        key: 'n3_suelo', grid: 'gridNodo3', pin: 'N3 D5 -> Cerebro D8',
+        name: 'Pin 2: Humedad del Suelo / Riego',
+        low: 'Humedad Óptima', high: 'Suelo Seco (Regando)', type: 'warn', clickable: true
+      },
+      {
+        key: 'n3_lleno', grid: 'gridNodo3', pin: 'N3 D6 -> Cerebro D9',
+        name: 'Pin 3: Alerta Tanque Lleno (100%)',
+        low: 'Nivel < 100%', high: 'Tanque Lleno (100%)', type: 'alert', clickable: true
+      },
+      {
+        key: 'n3_h60', grid: 'gridNodo3', pin: 'N3 D10 -> Cerebro D10',
+        name: 'Pin 4: Histéresis Nivel (≤ 60%)',
+        low: 'Reserva > 60%', high: 'Nivel ≤ 60% (Habilitado)', type: 'warn', clickable: true
+      },
+      {
+        key: 'n3_motAB', grid: 'gridNodo3', pin: 'N3 D11 -> Cerebro D11',
+        name: 'Pin 5: Motores A y B (Succión)',
+        low: 'Motores Apagados', high: 'Motores Succionando', type: 'warn', clickable: true
+      }
+    ];
+
+    let datos = {
+      n1_noche: 0, n1_rad: 0, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+      n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+      sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+    };
+
+    let modoSimulacion = false;
+    let alarmaSilenciada = false;
+    let serialWriter = null;
+
+    let audioCtx = null;
+    let sirenLoop = null;
+    let highPitch = true;
+
+    function manejarSonidoSirena(sonar) {
+      if (sonar && !sirenLoop) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        sirenLoop = setInterval(() => {
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = highPitch ? 980 : 620;
+          gain.gain.value = 0.08;
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.19);
+          highPitch = !highPitch;
+        }, 220);
+      } else if (!sonar && sirenLoop) {
+        clearInterval(sirenLoop);
+        sirenLoop = null;
+        highPitch = true;
+      }
+    }
+
+    function toggleSimulacion() {
+      modoSimulacion = !modoSimulacion;
+      const btn = document.getElementById('btnSim');
+      const box = document.getElementById('simPresetsBox');
+      const banner = document.getElementById('modeBanner');
+      const status = document.getElementById('connStatus');
+
+      document.body.classList.toggle('sim-active', modoSimulacion);
+
+      if (modoSimulacion) {
+        btn.innerText = "Modo Simulación: ON";
+        btn.classList.add('sim-on');
+        box.classList.add('visible');
+        banner.innerText = "Modo Simulación: Haz clic en cualquier tarjeta para cambiar su estado (LOW / HIGH)";
+        status.innerText = "● Modo Simulación Activo (Pruebas sin Arduino)";
+        registrarLogExplicativo("[SIMULACIÓN] Modo de simulación activado para demostración.", "ok");
+      } else {
+        btn.innerText = "Modo Simulación: OFF";
+        btn.classList.remove('sim-on');
+        box.classList.remove('visible');
+        banner.innerText = "Modo Hardware: Sensores autónomos desde Arduino Cerebro";
+        status.innerText = "● En espera de Arduino Cerebro (9600 bps)";
+        aplicarEscenario('normal');
+        registrarLogExplicativo("[SIMULACIÓN] Modo de simulación desactivado.", "ok");
+      }
+    }
+
+    function aplicarEscenario(tipo) {
+      if (tipo === 'normal') {
+        datos = {
+          n1_noche: 0, n1_rad: 0, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+          n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+          sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+        };
+      } else if (tipo === 'lluvia') {
+        datos = {
+          n1_noche: 0, n1_rad: 1, n1_hum: 0, n1_temp: 0, n1_luz: 0,
+          n3_lluvia: 1, n3_suelo: 0, n3_lleno: 0, n3_h60: 1, n3_motAB: 1,
+          sec_pir: 0, sec_ir: 0, sec_buzzer: 0
+        };
+      } else if (tipo === 'pir_noche') {
+        datos = {
+          n1_noche: 1, n1_rad: 1, n1_hum: 0, n1_temp: 0, n1_luz: 1,
+          n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+          sec_pir: 1, sec_ir: 0, sec_buzzer: 1
+        };
+      } else if (tipo === 'ir_noche') {
+        datos = {
+          n1_noche: 1, n1_rad: 1, n1_hum: 0, n1_temp: 0, n1_luz: 1,
+          n3_lluvia: 0, n3_suelo: 0, n3_lleno: 0, n3_h60: 0, n3_motAB: 0,
+          sec_pir: 0, sec_ir: 1, sec_buzzer: 1
+        };
+      }
+      alarmaSilenciada = false;
+      recalcularLogicaSimulacion();
+      actualizarEstadoSistema();
+      registrarLogExplicativo(`[ESCENARIO] Aplicado escenario de prueba: ${tipo.toUpperCase()}`, "warn");
+    }
+
+    function recalcularLogicaSimulacion() {
+      if (datos.n1_noche === 1 && (datos.sec_pir === 1 || datos.sec_ir === 1)) {
+        datos.sec_buzzer = 1;
+      } else {
+        datos.sec_buzzer = 0;
+      }
+    }
+
+    async function desactivarAlarma() {
+      const pass = document.getElementById('txtPassword').value;
+      const msg = document.getElementById('msgPass');
+      
+      if (pass === "0830") {
+        alarmaSilenciada = true;
+        msg.style.color = "#2f855a";
+        msg.innerText = "¡Alarma desactivada correctamente!";
+        document.getElementById('txtPassword').value = "";
+        actualizarEstadoSistema();
+        registrarLogExplicativo("🔒 Contraseña correcta (0830) ingresada: Alarma nocturna silenciada.", "ok");
+
+        if (serialWriter) {
+          try { await serialWriter.write("SILENCE\n"); } catch (e) {}
+        }
+      } else {
+        msg.style.color = "#c53030";
+        msg.innerText = "Contraseña incorrecta.";
+      }
+    }
+
+    function traducirDatosAExplicacion(obj) {
+      let eventos = [];
+      if (obj.n1_noche === 1) eventos.push("🌙 Ciclo Nocturno Activo (LDR detecta oscuridad).");
+      else eventos.push("☀️ Ciclo Diurno Activo (Iluminación natural normal).");
+
+      if (obj.n1_rad === 1) eventos.push("⚠️ Advertencia: Radiación solar baja en los cultivos.");
+      if (obj.n1_hum === 1) eventos.push("🚨 Alerta: Humedad interna fuera del rango seguro (40%-85%).");
+      if (obj.n1_temp === 1) eventos.push("🔥 Alerta: Sobrecalentamiento local (> 35°C).");
+      if (obj.n1_luz === 1) eventos.push("💡 Iluminación artificial forzada encendida (falta de sol prolongada).");
+
+      if (obj.n3_lluvia === 1) eventos.push("🌧️ Sensor FC-37 detectó precipitación (Lluvia activa).");
+      if (obj.n3_suelo === 1) eventos.push("💧 Suelo seco detectado: Bomba de riego C encendida.");
+      if (obj.n3_lleno === 1) eventos.push("🛑 Tanque de reserva al 100%: Captación pluvial bloqueada.");
+      if (obj.n3_h60 === 1) eventos.push("🔄 Histéresis: Nivel de agua en tanque ≤ 60% (Recolección habilitada).");
+      if (obj.n3_motAB === 1) eventos.push("⚡ Motores A y B succionando agua de lluvia hacia el tanque.");
+
+      if (obj.sec_pir === 1) eventos.push("👁️ Sensor PIR detectó movimiento en el perímetro.");
+      if (obj.sec_ir === 1) eventos.push("🛑 Barrera Infrarroja (IR) interrumpida en el acceso.");
+      
+      const buzzerActivo = (obj.sec_buzzer === 1 && !alarmaSilenciada) ? 1 : 0;
+      if (buzzerActivo === 1) eventos.push("🚨 ¡ALARMA ACTIVA! Buzzer sonando en patrón 'io io io io'.");
+
+      return eventos;
+    }
+
+    function actualizarEstadoSistema() {
+      if (datos.sec_pir === 0 && datos.sec_ir === 0) {
+        alarmaSilenciada = false;
+      }
+
+      const buzzerActivo = (datos.sec_buzzer === 1 && !alarmaSilenciada) ? 1 : 0;
+
+      const stPir = document.getElementById('stPir');
+      const stIr = document.getElementById('stIr');
+      const stBuzzer = document.getElementById('stBuzzer');
+      const lcdLine1 = document.getElementById('lcdLine1');
+      const lcdLine2 = document.getElementById('lcdLine2');
+
+      stPir.innerText = datos.sec_pir === 1 ? "MOVIMIENTO (HIGH)" : "SIN MOVIMIENTO (LOW)";
+      stPir.className = datos.sec_pir === 1 ? "actuator-val val-alert" : "actuator-val val-ok";
+
+      stIr.innerText = datos.sec_ir === 1 ? "INTERRUMPIDA (HIGH)" : "INTACTA (LOW)";
+      stIr.className = datos.sec_ir === 1 ? "actuator-val val-alert" : "actuator-val val-ok";
+
+      if (buzzerActivo === 1) {
+        stBuzzer.innerText = "SONANDO (io-io)";
+        stBuzzer.className = "actuator-val val-alert";
+        lcdLine2.innerText = "¡ALERTA INTRUSION NOCTURNA!";
+      } else {
+        stBuzzer.innerText = "SILENCIO (LOW)";
+        stBuzzer.className = "actuator-val val-ok";
+        lcdLine2.innerText = "SISTEMA ESTABLE - SILENCIO";
+      }
+
+      const ciclo = datos.n1_noche === 1 ? "NOCHE" : "DIA";
+      const lluvia = datos.n3_lluvia === 1 ? "LLUVIA" : "SECO";
+      lcdLine1.innerText = `CICLO:${ciclo} | CLIMA:${lluvia}`;
+
+      ['gridSeguridad', 'gridNodo1', 'gridNodo3'].forEach(id => {
+        document.getElementById(id).innerHTML = '';
+      });
+
+      SENSORS.forEach(s => {
+        const val = (s.key === 'sec_buzzer') ? buzzerActivo : (datos[s.key] === 1 ? 1 : 0);
+        const isHigh = val === 1;
+
+        const cardCls = !isHigh ? '' : (s.type === 'alert' ? 'active-alert' : 'active-warn');
+        const tagCls = !isHigh ? '' : (s.type === 'alert' ? 'tag-alert' : 'tag-warn');
+        const highBoxCls = s.type === 'alert' ? 'selected-alert' : 'selected-warn';
+
+        const card = document.createElement('div');
+        card.className = `sensor-item ${cardCls} ${s.clickable ? 'can-toggle' : ''}`;
+
+        if (s.clickable) {
+          card.onclick = () => {
+            if (!modoSimulacion) return;
+            datos[s.key] = datos[s.key] === 1 ? 0 : 1;
+            recalcularLogicaSimulacion();
+            actualizarEstadoSistema();
+            
+            // Generar explicación detallada del cambio hecho
+            const descripciones = traducirDatosAExplicacion(datos);
+            registrarLogExplicativo(`[CAMBIO MANUAL] Estado actualizado:\n• ` + descripciones.join('\n• '), 'warn');
+          };
+        }
+
+        card.innerHTML = `
+          <div class="sensor-top">
+            <span class="pin-label">${s.pin}</span>
+            <span class="status-tag ${tagCls}">${isHigh ? 'HIGH (1)' : 'LOW (0)'}</span>
+          </div>
+          <div class="sensor-name">${s.name}</div>
+          <div class="two-states">
+            <div class="state-box ${!isHigh ? 'selected-low' : ''}">
+              <strong>LOW (0)</strong>
+              ${s.low}
+            </div>
+            <div class="state-box ${isHigh ? highBoxCls : ''}">
+              <strong>HIGH (1)</strong>
+              ${s.high}
+            </div>
+          </div>
+        `;
+        document.getElementById(s.grid).appendChild(card);
+      });
+
+      manejarSonidoSirena(buzzerActivo === 1);
+    }
+
+    async function conectarArduino() {
+      if ("serial" in navigator) {
+        try {
+          const port = await navigator.serial.requestPort();
+          await port.open({ baudRate: 9600 });
+
+          if (modoSimulacion) toggleSimulacion();
+
+          document.getElementById('connStatus').innerText = "● Conectado a Arduino Cerebro (9600 bps)";
+          document.getElementById('btnArduino').innerText = "Arduino Conectado";
+
+          const encoder = new TextEncoderStream();
+          encoder.readable.pipeTo(port.writable);
+          serialWriter = encoder.writable.getWriter();
+
+          const decoder = new TextDecoderStream();
+          port.readable.pipeTo(decoder.writable);
+          const reader = decoder.readable.getReader();
+
+          registrarLogExplicativo("[USB] Conexión establecida con éxito con el Arduino Cerebro.", "ok");
+
+          let buffer = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+              buffer += value;
+              const lines = buffer.split('\n');
+              buffer = lines.pop();
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                  try {
+                    const parsed = JSON.parse(trimmed);
+                    datos = { ...datos, ...parsed };
+                    actualizarEstadoSistema();
+                    
+                    // Traducir trama JSON a explicación legible
+                    const resumen = traducirDatosAExplicacion(datos);
+                    registrarLogExplicativo("Lectura recibida del Arduino:\n• " + resumen.join('\n• '), "ok");
+                  } catch (e) {}
+                }
+              }
+            }
+          }
+        } catch (err) {
+          registrarLogExplicativo(`[ERROR USB] ${err.message}`, "alert");
+        }
+      } else {
+        alert("Tu navegador no soporta Web Serial API. Usa Google Chrome o Microsoft Edge.");
+      }
+    }
+
+    function registrarLogExplicativo(texto, tipo = "ok") {
+      const box = document.getElementById('serialLog');
+      const now = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-item';
+      
+      let claseColor = 'log-ok';
+      if (tipo === 'alert') claseColor = 'log-alert';
+      if (tipo === 'warn') claseColor = 'log-warn';
+
+      div.innerHTML = `<span class="log-time">[${now}]</span><span class="${claseColor}">${texto.replace(/\n/g, '<br>&nbsp;&nbsp;')}</span>`;
+      box.appendChild(div);
+      if (box.children.length > 40) box.removeChild(box.firstChild);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function limpiarSerial() {
+      const box = document.getElementById('serialLog');
+      box.innerHTML = '<div class="log-item"><span class="log-time">[SISTEMA]</span>Consola limpia. Esperando nuevos eventos...</div>';
+    }
+
+    actualizarEstadoSistema();
+  </script>
+</body>
+</html>
