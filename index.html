@@ -211,6 +211,9 @@ footer p{font-size:.9rem}
             <button class="b sc" data-sc="ir">🌙 Noche + Barrera IR (Alarma)</button>
             <button class="b sc" data-sc="lleno">🛢️ Tanque Lleno + Lluvia</button>
             <button class="b sc" data-sc="calor">🔥 Calor (Abanico)</button>
+            <button class="b sc" data-sc="tormenta">⛈️ Caída de Presión (Tormenta)</button>
+            <button class="b sc" data-sc="frente">❄️ Frente Frío</button>
+            <button class="b sc" data-sc="despejado">🌤️ Cielo Despejado (Riego Extra)</button>
           </div>
         </div>
         <p class="ctl-sub" style="margin-top:6px"><b>Estado operativo:</b></p>
@@ -243,8 +246,9 @@ footer p{font-size:.9rem}
     <p class="sec-p">Nodo 1, Nodo 3 y Seguridad. Cada tarjeta muestra en tiempo real los <b>dos estados posibles (LOW / HIGH)</b> recibidos por el Arduino Cerebro.</p>
 
     <div class="group"><h3>Módulo de Seguridad Nocturna <span class="tag">Pines Cerebro D12, D13, A0</span></h3><div class="pins" id="gSeg"></div></div>
-    <div class="group"><h3>Nodo 1 — Iluminación, Radiación y Clima <span class="tag">Pines Cerebro D2 – D4 y A1</span></h3><div class="pins" id="gN1"></div></div>
-    <div class="group"><h3>Nodo 3 — Ciclo Hídrico y Riego <span class="tag">Pines Cerebro D5 – D11</span></h3><div class="pins" id="gN3"></div><p class="hint" style="margin-top:12px">Los motores A y B recolectores se encienden cuando llueve y el tanque está por debajo de 60%. Con el tanque en 100% no se encienden aunque llueva.</p></div>
+    <div class="group"><h3>Nodo 1 — Iluminación y Microclima <span class="tag">Pines Cerebro D2, D4 y D5</span></h3><div class="pins" id="gN1"></div><p class="hint" style="margin-top:12px">El abanico extractor de 12 V se enciende cuando la temperatura supera 35 °C.</p></div>
+    <div class="group"><h3>Nodo 3 — Ciclo Hídrico y Riego <span class="tag">Pines Cerebro D7 – D11</span></h3><div class="pins" id="gN3"></div><p class="hint" style="margin-top:12px">Los motores A y B recolectores se encienden cuando llueve y el tanque está por debajo de 60%. Con el tanque en 100% no se encienden aunque llueva.</p></div>
+    <div class="group"><h3>Clima Predictivo — Barómetro BMP085 <span class="tag">Presión por I2C · Pines Cerebro A1, A2 y A3</span></h3><div class="pins" id="gClima"></div><p class="hint" style="margin-top:12px">Solo se usa la presión (no su temperatura). Una caída brusca anticipa tormentas y cierra ventanas; una subida rápida y sostenida avisa de un frente frío para precalentar; presión alta y estable indica cielo despejado y aumenta ligeramente el riego.</p></div>
     </div>
     </div>
     <aside class="mon" id="monitor">
@@ -279,42 +283,48 @@ const PASSWORD = "1234";          // contraseña para silenciar la alarma
 const OFF_COMMAND = "SILENCIAR\n"; // comando opcional enviado al Arduino al silenciar
 
 /* Definición de pines: bad = valor que se considera alerta (null = informativo) */
-const TEMP_ALTA = 35;  // °C: desde aquí el abanico se enciende
-const HUM_ALTA  = 80;  // % de humedad ambiente considerada alta
 const PINS = [
-  // Seguridad
+  // Seguridad nocturna (Cerebro D12, D13, A0)
   {id:'D12', g:'gSeg', ic:'🚶', n:'Sensor PIR',     sub:'Movimiento nocturno', lo:'SIN MOVIMIENTO', hi:'MOVIMIENTO DETECTADO', bad:1},
   {id:'D13', g:'gSeg', ic:'🔦', n:'Barrera IR',     sub:'Haz infrarrojo',      lo:'HAZ INTACTO',    hi:'HAZ CORTADO',          bad:1},
   {id:'A0',  g:'gSeg', ic:'🔔', n:'Buzzer / Alarma',sub:'Sirena',              lo:'SILENCIO',       hi:'SIRENA ACTIVA',        bad:1},
-  // Nodo 1 — Iluminación, Radiación y Clima
-  {id:'D2',  g:'gN1',  ic:'🌗', n:'Fotorresistencia (LDR)', sub:'Ciclo día / noche', lo:'NOCHE', hi:'DÍA', bad:null},
-  {id:'A1',  g:'gN1',  ic:'🌡️', n:'Sensor de Temperatura', sub:'Sensor análogo', lo:'TEMP. NORMAL', hi:'TEMP. ALTA', bad:1, num:true, th:TEMP_ALTA, unit:'°C'},
-  {id:'D3',  g:'gN1',  ic:'💧', n:'Humedad Ambiente', sub:'DHT22 (solo humedad)', lo:'HUMEDAD NORMAL', hi:'HUMEDAD ALTA', bad:null, num:true, th:HUM_ALTA, unit:'%'},
-  {id:'D4',  g:'gN1',  ic:'🌀', n:'Abanico Extractor', sub:'Saca el aire si hay calor', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
-  // Nodo 3 — Ciclo Hídrico y Riego
+  // Nodo 1 — señales hacia el Cerebro D2 – D6
+  {id:'D2',  g:'gN1',  ic:'🌗', n:'Fotorresistencia (LDR)', sub:'Módulo fotorresistor · día / noche', lo:'DÍA', hi:'NOCHE', bad:null},
+  {id:'D4',  g:'gN1',  ic:'💧', n:'Humedad Interna (DHT22)', sub:'Solo humedad · óptimo 40% – 85%', lo:'HUMEDAD ÓPTIMA', hi:'FUERA DE RANGO', bad:1},
+  {id:'D5',  g:'gN1',  ic:'🌡️', n:'Temperatura (análoga)', sub:'Sensor análogo · límite seguro 35 °C', lo:'TEMP. SEGURA', hi:'TEMP. ALTA (> 35 °C)', bad:1},
+  {id:'FAN', pn:'N1·D8', g:'gN1', ic:'🌀', n:'Abanico Extractor 12V', sub:'Transistor 2N2222 · temp. > 35 °C', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
+  // Nodo 3 — señales hacia el Cerebro D7 – D11
   {id:'D7',  g:'gN3',  ic:'🌧️', n:'Sensor de Lluvia', sub:'FC-37', lo:'SECO', hi:'LLUVIA DETECTADA', bad:null},
-  {id:'D9',  g:'gN3',  ic:'🛢️', n:'Nivel del Tanque 60%', sub:'Sensor de nivel de agua', lo:'MENOS DE 60%', hi:'NIVEL 60% O MÁS', bad:null},
+  {id:'D9',  g:'gN3',  ic:'🛢️', n:'Flotador de Nivel 60%', sub:'Flotador magnético ZP4510 (reed switch)', lo:'MENOS DE 60%', hi:'NIVEL 60% O MÁS', bad:null},
   {id:'D10', g:'gN3',  ic:'🚰', n:'Nivel del Tanque 100%', sub:'Sensor de nivel de agua', lo:'NO ESTÁ LLENO', hi:'TANQUE LLENO (100%)', bad:null},
-  {id:'D5',  g:'gN3',  ic:'⚙️', n:'Motor A Recolector', sub:'Recolecta agua de lluvia', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
-  {id:'D6',  g:'gN3',  ic:'⚙️', n:'Motor B Recolector', sub:'Recolecta agua de lluvia', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
+  {id:'MA',  pn:'N3', g:'gN3', ic:'⚙️', n:'Motor A Recolector', sub:'Llueve y tanque < 60%', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
+  {id:'MB',  pn:'N3', g:'gN3', ic:'⚙️', n:'Motor B Recolector', sub:'Llueve y tanque < 60%', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
   {id:'D8',  g:'gN3',  ic:'🌱', n:'Humedad de Suelo', sub:'Sensor capacitivo', lo:'SUELO SECO', hi:'SUELO HÚMEDO', bad:0},
   {id:'D11', g:'gN3',  ic:'🚿', n:'Bomba C de Riego', sub:'Riego del cultivo', lo:'BOMBA APAGADA', hi:'RIEGO ACTIVO', bad:null},
+  // Clima predictivo — barómetro BMP085 (presión por I2C, señales A1 – A3)
+  {id:'P',  pn:'I2C', g:'gClima', ic:'🧭', n:'Presión Barométrica', sub:'BMP085 · nivel del mar', lo:'SIN DATO', hi:'', bad:null, num:true, th:1, unit:' hPa', pres:true},
+  {id:'A1', g:'gClima', ic:'⛈️', n:'Alerta de Tormenta', sub:'Caída > 3 hPa en 3 h · cierra ventanas', lo:'SIN ALERTA', hi:'TORMENTA PRÓXIMA', bad:1},
+  {id:'A2', g:'gClima', ic:'❄️', n:'Frente Frío', sub:'Subida rápida y sostenida · precalienta', lo:'SIN FRENTE FRÍO', hi:'FRENTE FRÍO', bad:1},
+  {id:'A3', g:'gClima', ic:'💦', n:'Riego Extra', sub:'Presión alta y estable · más riego', lo:'RIEGO NORMAL', hi:'AUMENTAR RIEGO', bad:null},
 ];
 
 const SCEN = {
-  dia:   {D2:1,A1:26,D3:55,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:0},
-  lluvia:{D2:1,A1:25,D3:78,D7:1,D8:1,D9:0,D10:0,D11:0,D12:0,D13:0},
-  lleno: {D2:1,A1:25,D3:80,D7:1,D8:1,D9:1,D10:1,D11:0,D12:0,D13:0},
-  calor: {D2:1,A1:38,D3:45,D7:0,D8:0,D9:1,D10:0,D11:1,D12:0,D13:0},
-  pir:   {D2:0,A1:24,D3:60,D7:0,D8:1,D9:1,D10:0,D11:0,D12:1,D13:0},
-  ir:    {D2:0,A1:24,D3:60,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:1},
+  dia:      {D2:0,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1012},
+  lluvia:   {D2:0,D4:0,D5:0,D7:1,D8:1,D9:0,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1010},
+  lleno:    {D2:0,D4:0,D5:0,D7:1,D8:1,D9:1,D10:1,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1010},
+  calor:    {D2:0,D4:0,D5:1,D7:0,D8:0,D9:1,D10:0,D11:1,D12:0,D13:0,A1:0,A2:0,A3:0,P:1013},
+  pir:      {D2:1,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:1,D13:0,A1:0,A2:0,A3:0,P:1012},
+  ir:       {D2:1,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:1,A1:0,A2:0,A3:0,P:1012},
+  tormenta: {D2:0,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:0,A1:1,A2:0,A3:0,P:1003},
+  frente:   {D2:0,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:0,A1:0,A2:1,A3:0,P:1019},
+  despejado:{D2:0,D4:0,D5:0,D7:0,D8:0,D9:1,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:1,P:1018},
 };
 
 /* ================== ESTADO ================== */
 const S = {v:{}, sim:false, port:null, writer:null, reader:null, silenced:false, connected:false};
 PINS.forEach(p => S.v[p.id] = 0);
 S.raw = {}; S.rep = {};
-S.v.D2 = 1; // día por defecto
+S.v.D2 = 0; // D2 HIGH = noche; por defecto es de día
 
 const $ = id => document.getElementById(id);
 const byId = Object.fromEntries(PINS.map(p => [p.id, p]));
@@ -323,7 +333,7 @@ const byId = Object.fromEntries(PINS.map(p => [p.id, p]));
 PINS.forEach(p=>{
   const el = document.createElement('div');
   el.className = 'pin'; el.id = 'pin_'+p.id;
-  el.innerHTML = `<div class="top"><span class="ic">${p.ic}</span><span class="pn">${p.id}</span></div>
+  el.innerHTML = `<div class="top"><span class="ic">${p.ic}</span><span class="pn">${p.pn||p.id}</span></div>
     <h4>${p.n}</h4><small>${p.sub}</small>
     <div class="st"><span class="val"></span><span class="lv"></span></div>`;
   el.addEventListener('click',()=>{ if(S.sim && clickable(p)) setPin(p.id, S.v[p.id]?0:1, 'SIM'); });
@@ -376,22 +386,24 @@ $('btnClear').onclick = ()=>{ $('log').innerHTML=''; };
 log('SISTEMA','Sistema iniciado. Esperando conexión USB o activación del Modo Simulación...','sys');
 
 /* ================== LÓGICA ================== */
-function isNight(){ return S.v.D2===0; }
+function isNight(){ return S.v.D2===1; }
 function triggered(){ return isNight() && (S.v.D12===1 || S.v.D13===1); }
 
-function clickable(p){ return p.id!=='A0' && !(p.der && !S.rep[p.id]); }
+function clickable(p){ return p.id!=='A0' && !p.pres && !(p.der && !S.rep[p.id]); }
 function evtLog(p, v){
   const isBad = p.bad!==null && p.bad===v;
-  log('EVENTO', `${p.id} · ${p.n} → ${v? p.hi : p.lo}${v?' (HIGH)':' (LOW)'}`, isBad?'al':'ev');
+  log('EVENTO', `${p.pn||p.id} · ${p.n} → ${v? p.hi : p.lo}${v?' (HIGH)':' (LOW)'}`, isBad?'al':'ev');
 }
 function setPin(id, val, src, noRender){
   const p = byId[id]; if(!p) return;
   let raw = null, v;
   if(p.num && val>1){ raw = val; v = val>=p.th ? 1 : 0; } else v = val?1:0;
+  const prevRaw = S.raw[id];
   S.raw[id] = raw;
   const changed = S.v[id]!==v;
   S.v[id] = v;
-  if(changed) evtLog(p, v);
+  if(p.pres){ if(raw!=null && (prevRaw==null || Math.abs(raw-prevRaw)>=2)) log('EVENTO', `Presión barométrica → ${raw} hPa`, 'ev'); }
+  else if(changed) evtLog(p, v);
   if(!noRender) render();
 }
 /* Salidas calculadas por la página si el Arduino no las reporta */
@@ -402,10 +414,10 @@ function derive(id, val){
 function computeOutputs(){
   const llueve = S.v.D7===1, lleno = S.v.D10===1, mas60 = S.v.D9===1 || lleno;
   // Motores A y B: solo si llueve y el tanque está por debajo de 60%
-  const recolectar = llueve && !mas60 && !lleno ? 1 : 0;
-  derive('D5', recolectar); derive('D6', recolectar);
-  // Abanico: temperatura muy alta
-  derive('D4', S.v.A1===1 ? 1 : 0);
+  const recolectar = llueve && !mas60 ? 1 : 0;
+  derive('MA', recolectar); derive('MB', recolectar);
+  // Abanico extractor del Nodo 1: temperatura > 35 °C
+  derive('FAN', S.v.D5===1 ? 1 : 0);
 }
 
 function render(){
@@ -422,16 +434,16 @@ function render(){
     if(p.bad===null) el.classList.add('info');
     else if(p.bad===v) el.classList.add('alert');
     else if(!v && p.bad===1) {/* normal */}
-    el.querySelector('.val').textContent = (p.id==='A0' && S.silenced && trig) ? 'SILENCIADA' : (v?p.hi:p.lo);
+    el.querySelector('.val').textContent = p.pres ? (S.raw[p.id]!=null ? S.raw[p.id]+' hPa' : 'SIN DATO') : ((p.id==='A0' && S.silenced && trig) ? 'SILENCIADA' : (v?p.hi:p.lo));
     const rw = S.raw[p.id];
-    el.querySelector('.lv').textContent = (rw!=null ? rw+(p.unit||'')+' · ' : '') + (v?'HIGH':'LOW');
+    el.querySelector('.lv').textContent = p.pres ? 'BMP085' : (rw!=null ? rw+(p.unit||'')+' · ' : '') + (v?'HIGH':'LOW');
   });
 
   // LCD
   const cyc = isNight()?'NOCHE':'DIA', clim = S.v.D7?'LLUVIA':'SECO';
   $('lcd1').textContent = `CICLO:${cyc} | CLIMA:${clim}`;
   const lcd = $('lcd'); lcd.className='lcd';
-  let l2 = 'SISTEMA ESTABLE - SILENCIO';
+  let l2 = S.v.A1 ? 'AVISO: TORMENTA PROXIMA' : (S.v.A2 ? 'AVISO: FRENTE FRIO' : 'SISTEMA ESTABLE - SILENCIO');
   if(trig){
     const what = S.v.D12 && S.v.D13 ? 'MOVIMIENTO + HAZ CORTADO' : (S.v.D12 ? 'MOVIMIENTO NOCTURNO' : 'HAZ IR CORTADO');
     if(S.silenced){ l2='ALARMA SILENCIADA - '+what.split(' ')[0]; lcd.classList.add('muted'); }
@@ -499,6 +511,8 @@ function parseLine(line){
   line = line.trim(); if(!line) return;
   log('RX', line, 'rx');
   const re = /\b([DdAa]\d{1,2})\s*[:=,]\s*(\d{1,4})/g; let m, n=0;
+  const mp = /\bP\s*[:=]\s*(\d{3,4})\b/.exec(line);
+  if(mp){ setPin('P', parseInt(mp[1],10), 'USB'); S.rep.P = true; n++; }
   while((m = re.exec(line))){
     const id = m[1].toUpperCase();
     if(!byId[id]) continue;
