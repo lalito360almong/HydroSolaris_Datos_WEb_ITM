@@ -122,6 +122,12 @@ input[type=password]:focus{outline:0;border-color:var(--g500)}
 .pin.alert{border-left-color:var(--red);background:#fff8f8}.pin.alert .val{background:#ffe0e1;color:var(--red-d)}
 .pin.low{border-left-color:#a7b7ae}.pin.low .val{background:#eef2ef;color:#4c5f55}
 
+/* AHORRO DE AGUA */
+.ahorro-box{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--g50);border:1px solid #a9e4bf;border-radius:14px;padding:12px 16px;margin-bottom:16px}
+.ahorro-box span{font-size:.88rem;color:var(--g800);font-weight:500;flex:1 1 200px}
+.ahorro-box.act{background:#e0f2fe;border-color:#7cc4ee}.ahorro-box.act span{color:#075985}
+.ahorro-box .b.on{background:var(--sky);border-color:var(--sky);color:#fff}
+.ahorro-box .b.dis{opacity:.6}
 /* LAYOUT + MONITOR SERIAL */
 .layout{display:grid;grid-template-columns:1fr 380px;gap:24px;margin-top:30px;align-items:start}
 .main{min-width:0}
@@ -214,10 +220,16 @@ footer p{font-size:.9rem}
             <button class="b sc" data-sc="tormenta">⛈️ Caída de Presión (Tormenta)</button>
             <button class="b sc" data-sc="frente">❄️ Frente Frío</button>
             <button class="b sc" data-sc="despejado">🌤️ Cielo Despejado (Riego Extra)</button>
+            <button class="b sc" data-sc="sequia">🚱 Sequía (Modo Ahorro)</button>
           </div>
         </div>
         <p class="ctl-sub" style="margin-top:6px"><b>Estado operativo:</b></p>
         <div class="mode-box" id="modeBox">Modo Hardware: Sensores autónomos desde Arduino Cerebro</div>
+        <p class="ctl-sub"><b>Sistema de riego:</b></p>
+        <div class="ahorro-box" id="ahorroBox">
+          <span id="ahorroTxt">Riego normal (tanque con 60% o más)</span>
+          <button class="b" id="btnAhorro" title="Automático: lo decide el flotador del tanque">💧 Ahorro de Agua: OFF</button>
+        </div>
         <p class="ctl-sub"><b>Desactivar alarma nocturna (sirena):</b></p>
         <div class="row">
           <input type="password" id="pass" placeholder="Contraseña">
@@ -247,7 +259,7 @@ footer p{font-size:.9rem}
 
     <div class="group"><h3>Módulo de Seguridad Nocturna <span class="tag">Pines Cerebro D12, D13, A0</span></h3><div class="pins" id="gSeg"></div></div>
     <div class="group"><h3>Nodo 1 — Iluminación y Microclima <span class="tag">Pines Cerebro D2, D4 y D5</span></h3><div class="pins" id="gN1"></div><p class="hint" style="margin-top:12px">El abanico extractor de 12 V se enciende cuando la temperatura supera 35 °C.</p></div>
-    <div class="group"><h3>Nodo 3 — Ciclo Hídrico y Riego <span class="tag">Pines Cerebro D7 – D11</span></h3><div class="pins" id="gN3"></div><p class="hint" style="margin-top:12px">Los motores A y B recolectores se encienden cuando llueve y el tanque está por debajo de 60%. Con el tanque en 100% no se encienden aunque llueva.</p></div>
+    <div class="group"><h3>Nodo 3 — Ciclo Hídrico y Riego <span class="tag">Pines Cerebro D7 – D11</span></h3><div class="pins" id="gN3"></div><p class="hint" style="margin-top:12px">Los motores A y B recolectores se encienden cuando llueve y el tanque está por debajo de 60%. Con el tanque en 100% no se encienden aunque llueva. Si el flotador baja de 60% se activa el <b>modo ahorro de agua</b>: la bomba C solo riega en escasez o cuando el suelo está muy seco.</p></div>
     <div class="group"><h3>Clima Predictivo — Barómetro BMP085 <span class="tag">Presión por I2C · Pines Cerebro A1, A2 y A3</span></h3><div class="pins" id="gClima"></div><p class="hint" style="margin-top:12px">Solo se usa la presión (no su temperatura). Una caída brusca anticipa tormentas y cierra ventanas; una subida rápida y sostenida avisa de un frente frío para precalentar; presión alta y estable indica cielo despejado y aumenta ligeramente el riego.</p></div>
     </div>
     </div>
@@ -299,6 +311,7 @@ const PINS = [
   {id:'D10', g:'gN3',  ic:'🚰', n:'Nivel del Tanque 100%', sub:'Sensor de nivel de agua', lo:'NO ESTÁ LLENO', hi:'TANQUE LLENO (100%)', bad:null},
   {id:'MA',  pn:'N3', g:'gN3', ic:'⚙️', n:'Motor A Recolector', sub:'Llueve y tanque < 60%', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
   {id:'MB',  pn:'N3', g:'gN3', ic:'⚙️', n:'Motor B Recolector', sub:'Llueve y tanque < 60%', lo:'APAGADO', hi:'ENCENDIDO', bad:null, der:true},
+  {id:'AHORRO', pn:'N3', g:'gN3', ic:'💧', n:'Modo Ahorro de Agua', sub:'Tanque < 60% · riega solo con suelo muy seco', lo:'RIEGO NORMAL', hi:'AHORRO ACTIVO', bad:null, der:true},
   {id:'D8',  g:'gN3',  ic:'🌱', n:'Humedad de Suelo', sub:'Sensor capacitivo', lo:'SUELO SECO', hi:'SUELO HÚMEDO', bad:0},
   {id:'D11', g:'gN3',  ic:'🚿', n:'Bomba C de Riego', sub:'Riego del cultivo', lo:'BOMBA APAGADA', hi:'RIEGO ACTIVO', bad:null},
   // Clima predictivo — barómetro BMP085 (presión por I2C, señales A1 – A3)
@@ -309,6 +322,7 @@ const PINS = [
 ];
 
 const SCEN = {
+  sequia:   {D2:0,D4:0,D5:0,D7:0,D8:0,D9:0,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1017},
   dia:      {D2:0,D4:0,D5:0,D7:0,D8:1,D9:1,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1012},
   lluvia:   {D2:0,D4:0,D5:0,D7:1,D8:1,D9:0,D10:0,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1010},
   lleno:    {D2:0,D4:0,D5:0,D7:1,D8:1,D9:1,D10:1,D11:0,D12:0,D13:0,A1:0,A2:0,A3:0,P:1010},
@@ -416,6 +430,8 @@ function computeOutputs(){
   // Motores A y B: solo si llueve y el tanque está por debajo de 60%
   const recolectar = llueve && !mas60 ? 1 : 0;
   derive('MA', recolectar); derive('MB', recolectar);
+  // Modo ahorro de agua: tanque por debajo de 60% (flotador abajo)
+  derive('AHORRO', (S.sim || S.connected) && S.v.D9===0 && S.v.D10===0 ? 1 : 0);
   // Abanico extractor del Nodo 1: temperatura > 35 °C
   derive('FAN', S.v.D5===1 ? 1 : 0);
 }
@@ -443,7 +459,7 @@ function render(){
   const cyc = isNight()?'NOCHE':'DIA', clim = S.v.D7?'LLUVIA':'SECO';
   $('lcd1').textContent = `CICLO:${cyc} | CLIMA:${clim}`;
   const lcd = $('lcd'); lcd.className='lcd';
-  let l2 = S.v.A1 ? 'AVISO: TORMENTA PROXIMA' : (S.v.A2 ? 'AVISO: FRENTE FRIO' : 'SISTEMA ESTABLE - SILENCIO');
+  let l2 = S.v.A1 ? 'AVISO: TORMENTA PROXIMA' : (S.v.A2 ? 'AVISO: FRENTE FRIO' : (S.v.AHORRO ? 'MODO AHORRO DE AGUA' : 'SISTEMA ESTABLE - SILENCIO'));
   if(trig){
     const what = S.v.D12 && S.v.D13 ? 'MOVIMIENTO + HAZ CORTADO' : (S.v.D12 ? 'MOVIMIENTO NOCTURNO' : 'HAZ IR CORTADO');
     if(S.silenced){ l2='ALARMA SILENCIADA - '+what.split(' ')[0]; lcd.classList.add('muted'); }
@@ -471,6 +487,13 @@ function render(){
   $('btnSim').textContent = 'Modo Simulación: ' + (S.sim?'ON':'OFF');
   $('btnSim').classList.toggle('on', S.sim);
   $('simBox').style.display = S.sim?'block':'none';
+  const ah = S.v.AHORRO===1;
+  $('ahorroBox').classList.toggle('act', ah);
+  $('ahorroTxt').textContent = ah ? 'MODO AHORRO ACTIVO: tanque por debajo de 60%. Solo riega en escasez o con el suelo muy seco.' : 'Riego normal (tanque con 60% o más)';
+  const ba = $('btnAhorro');
+  ba.textContent = '💧 Ahorro de Agua: ' + (ah?'ON':'OFF');
+  ba.classList.toggle('on', ah);
+  ba.classList.toggle('dis', !S.sim);
 }
 
 /* ================== SIMULACIÓN ================== */
@@ -494,6 +517,16 @@ document.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{
   log('SISTEMA','Escenario: '+b.textContent.trim(),'sys');
   applyScenario(b.dataset.sc);
 });
+
+/* ================== BOTÓN AHORRO DE AGUA ================== */
+$('btnAhorro').onclick = ()=>{
+  if(!S.sim){
+    log('SISTEMA','El modo ahorro es automático: lo activa el flotador del tanque cuando baja de 60%. Activa el Modo Simulación para probarlo con el botón.','sys');
+    return;
+  }
+  if(S.v.AHORRO===1){ setPin('D9',1,'SIM'); }
+  else { setPin('D10',0,'SIM',true); setPin('D9',0,'SIM'); }
+};
 
 /* ================== SILENCIAR ================== */
 $('btnSilence').onclick = async ()=>{
